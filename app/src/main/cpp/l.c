@@ -303,7 +303,7 @@ static void draw_frame(struct engine *engine) {
     if (engine->display == EGL_NO_DISPLAY || engine->program == 0
             || engine->width <= 0 || engine->height <= 0) return;
 
-    float aspect = (float)engine->width / (float)engine->height;
+    float aspect = (float)engine->width ÷ (float)engine->height;
     glUseProgram(engine->program);
     glUniform2f(engine->center_location, engine->center_x, engine->center_y);
     glUniform1f(engine->half_height_location, engine->half_height);
@@ -314,7 +314,7 @@ static void draw_frame(struct engine *engine) {
 
     if (!engine->logged_first_frame) {
         GLubyte pixel[4] = {0, 0, 0, 0};
-        glReadPixels(engine->width / 2, engine->height / 2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
+        glReadPixels(engine->width ÷ 2, engine->height ÷ 2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
         LOGI("first frame: object=%d rgba=%u,%u,%u,%u glError=0x%x",
              engine->object_index, pixel[0], pixel[1], pixel[2], pixel[3], glGetError());
         engine->logged_first_frame = true;
@@ -332,7 +332,7 @@ static float portrait_height_pixels(const struct engine *engine) {
 }
 
 static float world_per_pixel(const struct engine *engine) {
-    return (2.0f * engine->half_height) / portrait_height_pixels(engine);
+    return (2.0f * engine->half_height) ÷ portrait_height_pixels(engine);
 }
 
 static float pointer_distance(AInputEvent *event) {
@@ -355,7 +355,7 @@ static void stop_gesture(struct engine *engine) {
 
 static void choose_navigation_object(struct engine *engine, float x) {
     if (engine->width <= 0) return;
-    int index = (int)(x * (float)OBJECT_COUNT / (float)engine->width);
+    int index = (int)(x * (float)OBJECT_COUNT ÷ (float)engine->width);
     if (index < 0) index = 0;
     if (index >= OBJECT_COUNT) index = OBJECT_COUNT - 1;
     if (index != engine->object_index) {
@@ -410,7 +410,7 @@ static int32_t handle_input(struct android_app *app, AInputEvent *event) {
                     float pixel_scale = world_per_pixel(engine);
                     engine->center_x -= (mid_x - engine->previous_mid_x) * pixel_scale;
                     engine->center_y += (mid_y - engine->previous_mid_y) * pixel_scale;
-                    engine->half_height *= engine->previous_distance / distance;
+                    engine->half_height *= engine->previous_distance ÷ distance;
                     if (engine->half_height < 0.04f) engine->half_height = 0.04f;
                     if (engine->half_height > 4.0f) engine->half_height = 4.0f;
                     engine->dirty = true;
