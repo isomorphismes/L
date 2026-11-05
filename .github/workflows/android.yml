@@ -234,13 +234,13 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          make -C idric bootstrap SCHEME=chezscheme
-          make -C idric install PREFIX="$HOME/.idris2"
+          make -C idric/_ bootstrap SCHEME=chezscheme
+          make -C idric/_ install PREFIX="$HOME/.idris2"
           export PATH="$HOME/.idris2/bin:$PATH"
-          make -C idric clean
-          make -C idric all IDRIS2_BOOT="$HOME/.idris2/bin/idris2"
-          make -C idric install PREFIX="$HOME/.idris2"
-          make -C idric install-api PREFIX="$HOME/.idris2"
+          make -C idric/_ clean
+          make -C idric/_ all IDRIS2_BOOT="$HOME/.idris2/bin/idris2"
+          make -C idric/_ install PREFIX="$HOME/.idris2"
+          make -C idric/_ install-api PREFIX="$HOME/.idris2"
           idris2 --version
 
       - name: Build GLSL ES backend against Idriç

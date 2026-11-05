@@ -30,3 +30,9 @@ The inherited build has no maintained test keystore or expected certificate.
 Runner-local debug outputs are test fixtures, not approved C67 upgrades. Do not
 replace an installed application, invent signing continuity, or uninstall to
 hide a mismatch. A preserved signer is required for an accepted upgrade.
+
+The shader-source bootstrap uses the canonical compiler's `_/Makefile` layout.
+Run 41983458552 built and emulated the actual APK successfully, but its separate
+shader-source job failed before compilation because it invoked the removed root
+Makefile. The job remains required and now invokes `make -C idric/_`; the Idriç
+and shader backend source pins and the packaged mathematical shader are retained.
