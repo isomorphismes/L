@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 env:
-  EDRIC_REF: main
+  EDRIC_REF: 94dfd99bd3e376507fedc8611053b7173b2519f0
   SHADER_BACKEND_REF: 7876b79058d6f59711151a21697369c1cf72df2f
 
 jobs:
@@ -31,7 +31,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: isomorphisms/ai-ci
-          ref: 903b2cb27ea572c9c6cb2ffa9f39e0fbf06ec9f8
+          ref: f6d825d15cd3c0c34ae1b43240a463ff5d343090
           path: .ai-ci-ick
 
       - name: Download qualified compiler stages
@@ -101,7 +101,7 @@ jobs:
           gradle --no-daemon --stacktrace :app:assembleDebug 2>&1 | tee android-build.log
 
       - name: Verify declared source producers
-        uses: isomorphisms/ai-ci@903b2cb27ea572c9c6cb2ffa9f39e0fbf06ec9f8
+        uses: isomorphisms/ai-ci@f6d825d15cd3c0c34ae1b43240a463ff5d343090
         with:
           suite: ci/build-toolchain-suite.tsv
           root: .
@@ -198,7 +198,6 @@ jobs:
           if-no-files-found: warn
 
   shader-source:
-    continue-on-error: true
     runs-on: ubuntu-latest
     timeout-minutes: 55
     steps:
@@ -211,7 +210,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes chezscheme glslang-tools libgmp-dev
 
-      - name: Check out Edric
+      - name: Qualify owned ICK for the Idriç bootstrap
+        id: shader-ick
+        uses: isomorphisms/ai-ci/ick-host@f6d825d15cd3c0c34ae1b43240a463ff5d343090
+
+      - name: Check out pinned Idriç
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: isomorphisms/Idric
@@ -225,20 +228,22 @@ jobs:
           ref: ${{ env.SHADER_BACKEND_REF }}
           path: shader-backend
 
-      - name: Build self-hosted Edric and compiler API
+      - name: Build pinned Idriç and compiler API
+        env:
+          CC: ${{ steps.shader-ick.outputs.compiler }} -fno-link-libatomic
         shell: bash
         run: |
           set -euxo pipefail
-          make -C idric bootstrap SCHEME=chezscheme
-          make -C idric install PREFIX="$HOME/.idris2"
+          make -C idric/_ bootstrap SCHEME=chezscheme
+          make -C idric/_ install PREFIX="$HOME/.idris2"
           export PATH="$HOME/.idris2/bin:$PATH"
-          make -C idric clean
-          make -C idric all IDRIS2_BOOT="$HOME/.idris2/bin/idris2"
-          make -C idric install PREFIX="$HOME/.idris2"
-          make -C idric install-api PREFIX="$HOME/.idris2"
+          make -C idric/_ clean
+          make -C idric/_ all IDRIS2_BOOT="$HOME/.idris2/bin/idris2"
+          make -C idric/_ install PREFIX="$HOME/.idris2"
+          make -C idric/_ install-api PREFIX="$HOME/.idris2"
           idris2 --version
 
-      - name: Build GLSL ES backend against Edric
+      - name: Build GLSL ES backend against Idriç
         run: |
           echo "$HOME/.idris2/bin" >> "$GITHUB_PATH"
           PATH="$HOME/.idris2/bin:$PATH" make -C shader-backend backend

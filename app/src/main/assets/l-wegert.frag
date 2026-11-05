@@ -260,15 +260,15 @@ vec3 navigation_color(float x01, float y01) {
     int chip = int(floor(scaled));
     vec2 local = vec2(fract(scaled), y01 / NAV_FRACTION);
     bool is_current = chip == u_object;
-    vec3 background = is_current ? vec3(0.20) : vec3(0.075);
+    vec3 background = is_current ? vec3(56.0 / 255.0) : vec3(47.0 / 255.0);
     float edge = max(
         max(step(local.x, 0.018), step(0.982, local.x)),
         max(step(local.y, 0.04), step(0.96, local.y))
     );
     float ink = chip == 0 ? label_32(local)
         : (chip == 1 ? label_43(local) : label_54(local));
-    vec3 color = mix(background, vec3(0.30), edge * 0.55);
-    return mix(color, vec3(0.95), ink);
+    vec3 color = mix(background, vec3(69.0 / 255.0), edge * 0.55);
+    return mix(color, vec3(244.0 / 255.0), ink);
 }
 
 void main() {
