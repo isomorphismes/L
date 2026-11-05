@@ -1,5 +1,12 @@
 # Fixed charcoal presentation
 
+Run41978975868 exposes an inherited shader-source checkout of the nonexistent
+Idriç branch main; the current default is Idriç. Pin the already used94dfd99
+compiler source instead, retain shader backend7876b79 and bootstrap maintained
+C through qualified ICK. Remove inherited continue-on-error so a failed source
+check remains visible as failure. The illustrative shader seam does not replace
+the packaged L-function evaluator. Fresh execution must qualify this repair.
+
 The native navigation chips use shared #2F2F2F/#383838 surfaces and #F4F4F4 marks.
 The browser stub explicitly uses the same neutral palette, focus and selection
 roles independently of system dark mode. Mathematical evaluators, Wegert phase

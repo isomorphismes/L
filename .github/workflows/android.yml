@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 env:
-  EDRIC_REF: main
+  EDRIC_REF: 94dfd99bd3e376507fedc8611053b7173b2519f0
   SHADER_BACKEND_REF: 7876b79058d6f59711151a21697369c1cf72df2f
 
 jobs:
@@ -198,7 +198,6 @@ jobs:
           if-no-files-found: warn
 
   shader-source:
-    continue-on-error: true
     runs-on: ubuntu-latest
     timeout-minutes: 55
     steps:
@@ -211,7 +210,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes chezscheme glslang-tools libgmp-dev
 
-      - name: Check out Edric
+      - name: Qualify owned ICK for the Idriç bootstrap
+        id: shader-ick
+        uses: isomorphisms/ai-ci/ick-host@f6d825d15cd3c0c34ae1b43240a463ff5d343090
+
+      - name: Check out pinned Idriç
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: isomorphisms/Idric
@@ -225,7 +228,9 @@ jobs:
           ref: ${{ env.SHADER_BACKEND_REF }}
           path: shader-backend
 
-      - name: Build self-hosted Edric and compiler API
+      - name: Build pinned Idriç and compiler API
+        env:
+          CC: ${{ steps.shader-ick.outputs.compiler }} -fno-link-libatomic
         shell: bash
         run: |
           set -euxo pipefail
@@ -238,7 +243,7 @@ jobs:
           make -C idric install-api PREFIX="$HOME/.idris2"
           idris2 --version
 
-      - name: Build GLSL ES backend against Edric
+      - name: Build GLSL ES backend against Idriç
         run: |
           echo "$HOME/.idris2/bin" >> "$GITHUB_PATH"
           PATH="$HOME/.idris2/bin:$PATH" make -C shader-backend backend
