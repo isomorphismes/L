@@ -2,6 +2,7 @@
 import ctypes as ABI
 import re
 import struct
+import sys
 from builtins import AssertionError, SystemExit, all, getattr, list, map, max, set, setattr, sorted
 from math import hypot, isfinite
 from pathlib import Path
@@ -240,7 +241,43 @@ def compare(gl ∈ object, vertex ∈ int, source ∈ str, rows ∈ list[str],
     gl.glDeleteProgram(program)
     return failure_count
 
+def check_generated(gl ∈ object, vertex ∈ int, source ∈ str) → None:
+    require("precision highp float;" in source, "Generated fragment lacks the binary32 precision declaration")
+    program ∈ int ← program_for(gl, vertex, source)
+    coordinate ∈ int ← location(gl, program, "u_delta")
+    tail ∈ int ← location(gl, program, "u_tail")
+    # mpmath at 65 digits evaluated expm1(-delta * log(tail)) / delta,
+    # with its analytic value at delta = 0. The inputs are exact in binary32.
+    points ∈ list[tuple[float, float, float, float, float]] ← [
+        (0.0, 0.0, 6.25, -1.83258146374831013036705, 0.0),
+        (0.00390625, 0.001953125, 6.25, -1.82603390866644432294489, 0.00326403023650856255405137),
+        (0.00390625, -0.001953125, 6.25, -1.82603390866644432294489, -0.00326403023650856255405137),
+        (-0.0078125, 0.0078125, 6.5, -1.88548779324622815969015, 0.0138200202102549385156652),
+        (0.0625, 0.0, 6.75, -1.79999501470162410530534, 0.0),
+    ]
+    maximum ∈ float ← 0.0
+    for point in points:
+        gl.glUniform2f(coordinate, point[0], point[1])
+        gl.glUniform1f(tail, point[2])
+        value ∈ list[float] ← draw(gl)
+        error ∈ float ← hypot(value[0] - point[3], value[1] - point[4])
+        require(value[2] == 0.0 and value[3] == 1.0 and error <= 2e-6,
+                "Generated regular-tail value differs at " + str(point))
+        maximum ← float(max(maximum, error))
+    gl.glDeleteProgram(program)
+    print("PASS", len(points), "generated F32 regular-tail comparisons. Largest absolute error:", maximum)
+
 def main() → int:
+    arguments ∈ list[str] ← sys.argv
+    require(len(arguments) <= 2, "Expected at most one generated fragment path")
+    gl ∈ object ← functions(open_context())
+    print(gl.glGetString(0x1F01).decode(), gl.glGetString(0x1F02).decode())
+    prepare_framebuffer(gl)
+    vertex ∈ int ← compile_shader(gl, 0x8B31, GL_SHADER_SOURCE)
+    if len(arguments) == 2:
+        generated ∈ str ← Path(arguments[1]).read_text()
+        check_generated(gl, vertex, generated)
+        return 0
     source ∈ str ← ROOT.joinpath("app", "src", "main", "assets", "l-wegert.frag").read_text()
     reference ∈ str ← ROOT.joinpath("ci", "l-at-one", "reference.tsv").read_text()
     rows ∈ list[str] ← reference.splitlines()
@@ -252,10 +289,6 @@ def main() → int:
         require(len(fields) == 6, "Invalid reference row")
         keys.append(fields[1] + "/" + fields[2] + "/" + fields[3])
     require(len(rows) == 186 and len(set(keys)) == len(rows), "Wrong reference coverage")
-    gl ∈ object ← functions(open_context())
-    print(gl.glGetString(0x1F01).decode(), gl.glGetString(0x1F02).decode())
-    prepare_framebuffer(gl)
-    vertex ∈ int ← compile_shader(gl, 0x8B31, GL_SHADER_SOURCE)
     check_packaged(gl, vertex, source)
     print("Unmodified packaged shader compiled, linked and drew three portraits")
     require(direct_dispatch(source), "The evaluator must dispatch the original coordinate")

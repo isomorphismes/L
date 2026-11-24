@@ -61,7 +61,7 @@ jobs:
       - name: Install compiler dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --yes chezscheme libgmp-dev glslang-tools
+          sudo apt-get install --yes chezscheme libgmp-dev glslang-tools libegl1 libegl-mesa0 libgl1-mesa-dri
       - name: Qualify ICK for compiler support
         id: ick
         uses: isomorphisms/ai-ci/ick-host@903b2cb27ea572c9c6cb2ffa9f39e0fbf06ec9f8
@@ -88,3 +88,17 @@ jobs:
       - name: Validate and link the generated GLSL
         working-directory: .shader-backend
         run: glslangValidator -l fixtures/wegert-fullscreen.vert generated/regular-hurwitz-tail.frag
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: dilapidated-shed/ithon
+          ref: 9d530f4ad51f5b0a09c3e74dbe45cac5bb6d52d3
+          path: .ithon
+          persist-credentials: false
+      - name: Read the generated regular-tail values from a GLES framebuffer
+        env:
+          EGL_PLATFORM: surfaceless
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          generated=.shader-backend/generated/regular-hurwitz-tail.frag
+          sha256sum "$generated"
+          .ithon/ithon ci/l-at-one/check.pi "$generated"
