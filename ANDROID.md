@@ -46,9 +46,14 @@ chi_4:  +1 at 1, -1 at 3
 chi_5:  +1 at 1,4; -1 at 2,3
 ```
 
-A tiny symmetric evaluation around `s = 1` avoids the removable numerical `0/0` caused by combining Hurwitz-zeta terms whose poles cancel for these non-principal characters.
+Each character sums to zero. The shader subtracts the common Hurwitz residue
+before division. With `delta = s - 1` and `tail = 6 + a/q`, the pole term
+becomes `(tail^(-delta) - 1) / delta`. A local complex series evaluates the
+quotient through `delta = 0`, where its value is `-log(tail)`.
 
-This remains a float/GPU visual evaluator, not a replacement for Arb, PARI, Sage, or LMFDB numerical data. Accuracy is intended for stable Wegert portraits over the ordinary phone camera range.
+The [numeric acceptance notes](ci/l-at-one/README.md) give the binary32 test
+region, approximation budget and software GLES readback method. The full
+camera range is available for exploration.
 
 ## Neighbor semantics
 

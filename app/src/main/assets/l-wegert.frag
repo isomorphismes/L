@@ -38,20 +38,39 @@ vec2 positive_base_power(float base, vec2 exponent) {
     return radius * vec2(cos(angle), sin(angle));
 }
 
+// (tail^(-delta) - 1) / delta, continued at delta = 0.
+vec2 regular_tail(vec2 delta, float tail) {
+    float log_tail = log(tail);
+    vec2 argument = -log_tail * delta;
+    if (dot(argument, argument) <= 1.0 / 64.0) {
+        // expm1(z) / z through z^5. On |z| <= 1/8 the omitted
+        // terms have modulus <= exp(1/8) * (1/8)^6 / 7!.
+        vec2 ratio = vec2(1.0 / 720.0, 0.0);
+        ratio = vec2(1.0 / 120.0, 0.0) + c_mul(argument, ratio);
+        ratio = vec2(1.0 / 24.0, 0.0) + c_mul(argument, ratio);
+        ratio = vec2(1.0 / 6.0, 0.0) + c_mul(argument, ratio);
+        ratio = vec2(1.0 / 2.0, 0.0) + c_mul(argument, ratio);
+        ratio = vec2(1.0, 0.0) + c_mul(argument, ratio);
+        return -log_tail * ratio;
+    }
+    return c_div(positive_base_power(tail, -delta) - vec2(1.0, 0.0), delta);
+}
+
 /*
- * Euler-Maclaurin continuation of Hurwitz zeta:
+ * Regular part zeta(s,a) - 1/(s-1), using Euler-Maclaurin:
  *
- * zeta(s,a) =
+ * zeta(s,a) - 1/(s-1) ≈
  *   sum_{n=0}^{N-1} (n+a)^(-s)
- *   + (N+a)^(1-s)/(s-1)
+ *   + ((N+a)^(1-s) - 1)/(s-1)
  *   + 1/2 (N+a)^(-s)
  *   + B2/2!  (s)_1 (N+a)^(-s-1)
  *   + B4/4!  (s)_3 (N+a)^(-s-3)
  *   + B6/6!  (s)_5 (N+a)^(-s-5)
  *
- * N=6 is a visual/mobile approximation, not a high-precision evaluator.
+ * Each bundled character sums to zero, so the subtracted residues cancel
+ * exactly. The series above evaluates each regular part directly at s=1.
  */
-vec2 hurwitz_zeta(vec2 s, float a) {
+vec2 hurwitz_zeta_regular(vec2 s, float a) {
     vec2 value = vec2(0.0);
 
     for (int n = 0; n < HURWITZ_TERMS; ++n) {
@@ -59,13 +78,8 @@ vec2 hurwitz_zeta(vec2 s, float a) {
     }
 
     float tail = float(HURWITZ_TERMS) + a;
-    vec2 one_minus_s = vec2(1.0 - s.x, -s.y);
-    vec2 s_minus_one = vec2(s.x - 1.0, s.y);
 
-    value += c_div(
-        positive_base_power(tail, one_minus_s),
-        s_minus_one
-    );
+    value += regular_tail(s - vec2(1.0, 0.0), tail);
     value += 0.5 * positive_base_power(tail, -s);
 
     vec2 rising1 = s;
@@ -96,48 +110,36 @@ vec2 hurwitz_zeta(vec2 s, float a) {
  */
 vec2 evaluate_chi3(vec2 s) {
     vec2 residues =
-        hurwitz_zeta(s, 1.0 / 3.0)
-        - hurwitz_zeta(s, 2.0 / 3.0);
+        hurwitz_zeta_regular(s, 1.0 / 3.0)
+        - hurwitz_zeta_regular(s, 2.0 / 3.0);
     return c_mul(positive_base_power(3.0, -s), residues);
 }
 
 vec2 evaluate_chi4(vec2 s) {
     vec2 residues =
-        hurwitz_zeta(s, 1.0 / 4.0)
-        - hurwitz_zeta(s, 3.0 / 4.0);
+        hurwitz_zeta_regular(s, 1.0 / 4.0)
+        - hurwitz_zeta_regular(s, 3.0 / 4.0);
     return c_mul(positive_base_power(4.0, -s), residues);
 }
 
 vec2 evaluate_chi5(vec2 s) {
     vec2 residues =
-        hurwitz_zeta(s, 1.0 / 5.0)
-        - hurwitz_zeta(s, 2.0 / 5.0)
-        - hurwitz_zeta(s, 3.0 / 5.0)
-        + hurwitz_zeta(s, 4.0 / 5.0);
+        hurwitz_zeta_regular(s, 1.0 / 5.0)
+        - hurwitz_zeta_regular(s, 2.0 / 5.0)
+        - hurwitz_zeta_regular(s, 3.0 / 5.0)
+        + hurwitz_zeta_regular(s, 4.0 / 5.0);
     return c_mul(positive_base_power(5.0, -s), residues);
 }
 
-vec2 evaluate_l_raw(int object_index, vec2 s) {
-    if (object_index == 0) return evaluate_chi3(s);
-    if (object_index == 1) return evaluate_chi4(s);
-    return evaluate_chi5(s);
-}
-
-vec2 evaluate_l(int object_index, vec2 s) {
-    /*
-     * Each Hurwitz term has a pole at s=1 although these non-principal
-     * character combinations do not. Avoid a single-pixel 0/0 by taking
-     * the symmetric limiting value in a tiny neighborhood.
-     */
-    vec2 from_one = s - vec2(1.0, 0.0);
-    if (dot(from_one, from_one) < 9.0e-6) {
-        vec2 offset = vec2(0.004, 0.0);
-        return 0.5 * (
-            evaluate_l_raw(object_index, s - offset)
-            + evaluate_l_raw(object_index, s + offset)
-        );
+bool evaluate_l(int object_index, vec2 s, out vec2 value) {
+    if (object_index < 0 || object_index > 2 || any(isnan(s)) || any(isinf(s))) {
+        value = vec2(0.0);
+        return false;
     }
-    return evaluate_l_raw(object_index, s);
+    if (object_index == 0) value = evaluate_chi3(s);
+    else if (object_index == 1) value = evaluate_chi4(s);
+    else value = evaluate_chi5(s);
+    return true;
 }
 
 float positive_fract(float value) {
@@ -287,6 +289,10 @@ void main() {
         portrait_y * u_half_height
     );
 
-    vec2 value = evaluate_l(u_object, s);
+    vec2 value;
+    if (!evaluate_l(u_object, s, value)) {
+        frag_color = vec4(0.0, 0.0, 0.0, 1.0);
+        return;
+    }
     frag_color = vec4(wegert_color(value), 1.0);
 }

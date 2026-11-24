@@ -1,0 +1,29 @@
+module Example.RegularHurwitzTail
+
+import Shader.Source
+
+complex_multiply : ShaderFloatTuple 2 -> ShaderFloatTuple 2 -> ShaderFloatTuple 2
+complex_multiply left right =
+  vec2 (x left * x right - y left * y right)
+       (x left * y right + y left * x right)
+
+horner_step : ShaderFloatTuple 2 -> Double -> ShaderFloatTuple 2 -> ShaderFloatTuple 2
+horner_step argument coefficient higher_terms =
+  add_components (vec2 coefficient 0.0) (complex_multiply argument higher_terms)
+
+%export "glsles:fragment|u_delta=uniform,u_tail=uniform"
+regular_hurwitz_tail : ShaderFloatTuple 2 -> Double -> ShaderFloatTuple 4
+regular_hurwitz_tail delta tail =
+  let negative_log_tail = 0.0 - logF tail
+      argument = scale_components negative_log_tail delta
+      term_five = vec2 0.001388888888888889 0.0
+      term_four = horner_step argument 0.008333333333333333 term_five
+      term_three = horner_step argument 0.041666666666666664 term_four
+      term_two = horner_step argument 0.16666666666666667 term_three
+      term_one = horner_step argument 0.5 term_two
+      ratio = horner_step argument 1.0 term_one
+      result = scale_components negative_log_tail ratio
+   in vec4 (x result) (y result) 0.0 1.0
+
+main : IO ()
+main = pure ()
